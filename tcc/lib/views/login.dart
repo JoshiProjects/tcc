@@ -1,181 +1,204 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
-import 'package:tcc/main.dart';
-import 'package:tcc/routes/routes.dart';
-import 'package:firebase_core/firebase_core.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:firebase_auth/firebase_auth.dart';
+import 'package:provider/provider.dart';
+import 'package:tcc/services/auth_service.dart';
 
 class LoginPage extends StatefulWidget {
+  const LoginPage({super.key});
+
   @override
-  LoginPageState createState() => LoginPageState();
+  State<LoginPage> createState() => _LoginPageState();
 }
 
-class LoginPageState extends State<LoginPage> {
-  final CollectionReference _usuarios =
-      FirebaseFirestore.instance.collection('Usuarios');
+class _LoginPageState extends State<LoginPage> {
+  final formKey = GlobalKey<FormState>();
+  final email = TextEditingController();
+  final senha = TextEditingController();
 
-  final TextEditingController _emailController = TextEditingController();
-  final TextEditingController _senhaController = TextEditingController();
-  Future<void> _create([DocumentSnapshot? documentSnapshot]) async {
-    if (documentSnapshot != null) {
-      _emailController.text = documentSnapshot['email'];
-      _senhaController.text = documentSnapshot['senha'];
-    }
-    await showModalBottomSheet(
-        isScrollControlled: true,
-        context: context,
-        builder: (BuildContext ctx) {
-          return Padding(
-              padding: EdgeInsets.only(
-                  top: 20,
-                  left: 20,
-                  right: 20,
-                  bottom: MediaQuery.of(ctx).viewInsets.bottom + 20),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  TextField(
-                    keyboardType: TextInputType.emailAddress,
-                    controller: _emailController,
-                    decoration: const InputDecoration(labelText: 'Email'),
-                  ),
-                  TextField(
-                    keyboardType: TextInputType.visiblePassword,
-                    controller: _senhaController,
-                    decoration: const InputDecoration(labelText: 'Senha'),
-                  ),
-                  const SizedBox(
-                    height: 20,
-                  ),
-                  ElevatedButton(
-                    child: const Text('Salvar'),
-                    onPressed: () async {
-                      final String email = _emailController.text;
-                      final String senha = _senhaController.text;
+  bool isLogin = true;
 
-                      if (senha != null) {
-                        await _usuarios.add({"email": email, "senha": senha});
-                        _emailController.text = '';
-                        _senhaController.text = '';
-                      }
-                    },
-                  )
-                ],
-              ));
-        });
-  }
+  late String titulo;
+  late String actionButton;
+  late String toggleButton;
+  bool loading = false;
 
   @override
   void initState() {
-    SystemChrome.setEnabledSystemUIOverlays([]);
+    // TODO: implement initState
     super.initState();
+    setFormAction(true);
+  }
+
+  setFormAction(bool acao) {
+    setState(() {
+      isLogin = acao;
+
+      if (isLogin) {
+        titulo = 'Login';
+        actionButton = 'Logar';
+        toggleButton = 'Ainda não tem conta? Crie uma agora';
+      } else {
+        titulo = 'Crie sua conta';
+        actionButton = 'Cadastrar';
+        toggleButton = 'Já tem conta?';
+      }
+    });
+  }
+
+  Login() async {
+    setState(() => loading = true);
+    try {
+      await context.read<AuthService>().Login(email.text, senha.text);
+    } on AuthException catch (e) {
+      setState(() => loading = false);
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text(e.message)));
+    }
+  }
+
+  Registrar() async {
+    try {
+      setState(() => loading = true);
+      await context.read<AuthService>().Registrar(email.text, senha.text);
+    } on AuthException catch (e) {
+      setState(() => loading = false);
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text(e.message)));
+    }
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: Container(
-        width: double.maxFinite,
-        height: double.maxFinite,
-        child: Stack(
-          children: <Widget>[
-            Image.asset(
-              "assets/banner_login.jpg",
-              width: 400,
-            ),
-            Positioned(
-              top: 145,
-              left: 35,
-              child: Text(
-                'Login',
-                style: TextStyle(
-                  fontSize: 28,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.white,
-                ),
-              ),
-            ),
-            Positioned(
-              top: 200,
-              child: Container(
-                padding: EdgeInsets.symmetric(vertical: 45, horizontal: 35),
-                width: MediaQuery.of(context).size.width,
-                height: MediaQuery.of(context).size.height,
-                decoration: BoxDecoration(
-                  color: Color(0xFF530C74),
-                  borderRadius: BorderRadius.only(
-                      topLeft: Radius.circular(45),
-                      topRight: Radius.circular(45)),
-                ),
-                child: Column(
-                  children: <Widget>[
-                    TextField(
-                        decoration: InputDecoration(
-                      focusedBorder: UnderlineInputBorder(
-                          borderSide: BorderSide(color: Colors.white54)),
-                      enabledBorder: UnderlineInputBorder(
-                          borderSide: BorderSide(
-                        color: Colors.white,
-                      )),
-                      hintText: 'Email',
-                      hintStyle: TextStyle(
-                        color: Colors.white,
-                      ),
-                    )),
-                    Padding(
-                      padding: EdgeInsets.only(top: 20, bottom: 75),
-                      child: TextField(
-                          decoration: InputDecoration(
-                              focusedBorder: UnderlineInputBorder(
-                                  borderSide:
-                                      BorderSide(color: Colors.white54)),
-                              enabledBorder: UnderlineInputBorder(
-                                  borderSide: BorderSide(color: Colors.white)),
-                              hintText: 'Senha',
-                              hintStyle: TextStyle(
-                                color: Colors.white,
-                              ))),
+      body: SingleChildScrollView(
+        child: Padding(
+          padding: EdgeInsets.only(top: 100),
+          child: Form(
+              key: formKey,
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Text(
+                    titulo,
+                    style: TextStyle(
+                      fontSize: 35,
+                      fontWeight: FontWeight.bold,
+                      letterSpacing: -1.5,
                     ),
-                    Center(
-                      child: TextButton(
-                          onPressed: () {
-                            Navigator.of(context)
-                                .pushNamed(AppRoutes.USER_LIST);
-                          },
-                          child: Container(
-                            height: 45,
-                            width: double.maxFinite,
-                            decoration: BoxDecoration(
-                                color: Colors.white,
-                                borderRadius:
-                                    BorderRadius.all(Radius.circular(35))),
-                            child: Center(
-                              child: Text(
-                                'Login',
-                                style: TextStyle(color: Color(0xFF530C74)),
-                              ),
-                            ),
+                  ),
+                  Padding(
+                    padding: EdgeInsets.all(24),
+                    child: TextFormField(
+                      controller: email,
+                      decoration: InputDecoration(
+                        focusedBorder: OutlineInputBorder(
+                            borderSide: BorderSide(width: 3),
+                            borderRadius: BorderRadius.circular(50)),
+                        focusedErrorBorder: OutlineInputBorder(
+                            borderSide: BorderSide(color: Colors.red, width: 3),
+                            borderRadius: BorderRadius.circular(50)),
+                        enabledBorder: OutlineInputBorder(
+                            borderSide: BorderSide(width: 3),
+                            borderRadius: BorderRadius.circular(50)),
+                        errorBorder: OutlineInputBorder(
+                            borderSide: BorderSide(color: Colors.red, width: 3),
+                            borderRadius: BorderRadius.circular(50)),
+                        labelText: 'Email',
+                      ),
+                      keyboardType: TextInputType.emailAddress,
+                      validator: (value) {
+                        if (value!.isEmpty) {
+                          return 'Email inválido';
+                        }
+                        return null;
+                      },
+                    ),
+                  ),
+                  Padding(
+                    padding:
+                        EdgeInsets.symmetric(vertical: 12.0, horizontal: 24.0),
+                    child: TextFormField(
+                      controller: senha,
+                      obscureText: true,
+                      decoration: InputDecoration(
+                        focusedBorder: OutlineInputBorder(
+                            borderSide: BorderSide(width: 3),
+                            borderRadius: BorderRadius.circular(50)),
+                        focusedErrorBorder: OutlineInputBorder(
+                            borderSide: BorderSide(color: Colors.red, width: 3),
+                            borderRadius: BorderRadius.circular(50)),
+                        enabledBorder: OutlineInputBorder(
+                            borderSide: BorderSide(width: 3),
+                            borderRadius: BorderRadius.circular(50)),
+                        errorBorder: OutlineInputBorder(
+                            borderSide: BorderSide(color: Colors.red, width: 3),
+                            borderRadius: BorderRadius.circular(50)),
+                        labelText: 'Senha',
+                      ),
+                      keyboardType: TextInputType.emailAddress,
+                      validator: (value) {
+                        if (value!.isEmpty) {
+                          return 'Informe sua senha';
+                        } else if (value.length < 8) {
+                          return 'Sua senha deve ter no minimo 8 caracteres';
+                        }
+                        return null;
+                      },
+                    ),
+                  ),
+                  Padding(
+                    padding: EdgeInsets.all(24.0),
+                    child: ElevatedButton(
+                      style: ElevatedButton.styleFrom(
+                          shadowColor: Color.fromARGB(255, 102, 95, 105),
+                          backgroundColor: Color(0xFF530C74),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(24.0),
                           )),
+                      onPressed: () {
+                        if (formKey.currentState!.validate()) {
+                          if (isLogin) {
+                            Login();
+                          } else {
+                            Registrar();
+                          }
+                        }
+                      },
+                      child: Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: (loading)
+                              ? [
+                                  Padding(
+                                    padding: EdgeInsets.all(16),
+                                    child: SizedBox(
+                                      width: 24,
+                                      height: 24,
+                                      child: CircularProgressIndicator(
+                                        color: Colors.white,
+                                      ),
+                                    ),
+                                  )
+                                ]
+                              : [
+                                  Icon(Icons.check),
+                                  Padding(
+                                    padding: EdgeInsets.all(16.0),
+                                    child: Text(
+                                      actionButton,
+                                      style: TextStyle(fontSize: 20),
+                                    ),
+                                  ),
+                                ]),
                     ),
-                    Padding(
-                      padding: EdgeInsets.only(top: 15),
-                      child: TextButton(
-                        onPressed: () => _create(),
-                        child: Text(
-                          "Cadastre-se",
-                          style: TextStyle(
-                            color: Colors.white60,
-                          ),
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            )
-          ],
+                  ),
+                  TextButton(
+                    onPressed: () => setFormAction(!isLogin),
+                    child: Text(toggleButton,
+                        style: TextStyle(
+                          color: Color(0xFF530C74),
+                        )),
+                  ),
+                ],
+              )),
         ),
       ),
     );

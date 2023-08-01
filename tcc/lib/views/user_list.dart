@@ -1,6 +1,12 @@
 import 'package:flutter/src/widgets/framework.dart';
 import 'package:flutter/src/widgets/placeholder.dart';
 import 'package:flutter/material.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:provider/provider.dart';
+import 'package:tcc/routes/routes.dart';
+import 'package:tcc/main.dart';
+import 'package:tcc/services/auth_service.dart';
+import 'package:tcc/views/login.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 
@@ -67,47 +73,74 @@ class _UserListState extends State<UserList> {
         });
   }
 
+  // @override
+  // void initState() {
+  //   // TODO: implement initState
+  //   super.initState();
+  //   FirebaseAuth.instance.idTokenChanges().listen((User? user) {
+  //     if (user == null) {
+  //       Navigator.pushReplacement(
+  //         context,
+  //         MaterialPageRoute(
+  //           builder: (context) => LoginPage(),
+  //         ),
+  //       );
+  //     } else {
+  //       Navigator.of(context).pushNamed(AppRoutes.HOME);
+  //     }
+  //   });
+  // }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-        appBar: AppBar(
-          title: Text('Lista de usuário'),
-        ),
-        body: StreamBuilder(
-          stream: _usuarios.snapshots(),
-          builder: (context, AsyncSnapshot<QuerySnapshot> streamSnapshot) {
-            if (streamSnapshot.hasData) {
-              return ListView.builder(
-                itemCount: streamSnapshot.data!.docs.length,
-                itemBuilder: (context, index) {
-                  final DocumentSnapshot documentSnapshot =
-                      streamSnapshot.data!.docs[index];
-                  final avatar = CircleAvatar(child: Icon(Icons.person));
-                  return Card(
-                    child: ListTile(
-                      leading: avatar,
-                      title: Text(documentSnapshot['email']),
-                      subtitle: Text(documentSnapshot['senha']),
-                      trailing: Container(
-                        width: 50,
-                        child: Row(
-                          children: <Widget>[
-                            IconButton(
-                              onPressed: () => _update(documentSnapshot),
-                              icon: Icon(Icons.edit),
-                            ),
-                          ],
-                        ),
+      appBar: AppBar(
+        actions: <Widget>[
+          IconButton(
+            icon: Icon(Icons.arrow_back),
+            onPressed: () {
+              context.read<AuthService>().Logout();
+            },
+          ),
+        ],
+        title: Text('Lista de usuário'),
+      ),
+      body: StreamBuilder(
+        stream: _usuarios.snapshots(),
+        builder: (context, AsyncSnapshot<QuerySnapshot> streamSnapshot) {
+          if (streamSnapshot.hasData) {
+            return ListView.builder(
+              itemCount: streamSnapshot.data!.docs.length,
+              itemBuilder: (context, index) {
+                final DocumentSnapshot documentSnapshot =
+                    streamSnapshot.data!.docs[index];
+                final avatar = CircleAvatar(child: Icon(Icons.person));
+                return Card(
+                  child: ListTile(
+                    leading: avatar,
+                    title: Text(documentSnapshot['email']),
+                    subtitle: Text(documentSnapshot['senha']),
+                    trailing: Container(
+                      width: 50,
+                      child: Row(
+                        children: <Widget>[
+                          IconButton(
+                            onPressed: () => _update(documentSnapshot),
+                            icon: Icon(Icons.edit),
+                          ),
+                        ],
                       ),
                     ),
-                  );
-                },
-              );
-            } else {
-              return Text("");
-            }
-          },
-        ));
+                  ),
+                );
+              },
+            );
+          } else {
+            return Text("sem usuarios cadastrados!");
+          }
+        },
+      ),
+    );
   }
 }
 // if (value == null || value.trim().isEmpty) {
